@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import CurrentWeather from "./components/CurrentWeather";
 import HourlyWeather from "./components/HourlyWeather";
 import SearchSection from "./components/SearchSection";
-import { weatherCodes } from "./constants"; 
+import { weatherCodes } from "./constants";
 import NoResultsDiv from "./components/NoResultsDiv";
 
 const App = () => {
   const API_KEY = import.meta.env.VITE_API_KEY;
-  console.log("API Key:", API_KEY); // Debugging to check if the API key is loaded
+  console.log("API Key:", API_KEY); // Debugging
 
   const [currentWeather, setCurrentWeather] = useState({});
   const [hourlyForecasts, setHourlyForecasts] = useState([]);
@@ -25,26 +25,35 @@ const App = () => {
         `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${city}&days=2`
       )}`;
 
-      console.log("Fetching data from:", API_URL); // Debugging API URL
+      console.log("Fetching from:", API_URL); // Debugging API URL
 
       const response = await fetch(API_URL);
       if (!response.ok) throw new Error("Failed to fetch weather data");
 
       const data = await response.json();
-      const parsedData = JSON.parse(data.contents); // Extract actual JSON data
+      console.log("Raw API Response:", data); // Debugging raw response
 
-      if (!parsedData || !parsedData.current || !parsedData.forecast) {
-        throw new Error("Invalid API response");
+      if (!data.contents) throw new Error("Invalid API response: No contents found");
+
+      const parsedData = JSON.parse(data.contents);
+      console.log("Parsed API Data:", parsedData); // Debugging parsed data
+
+      if (!parsedData.location || !parsedData.current || !parsedData.forecast) {
+        throw new Error("Invalid API response structure");
       }
 
-      const temperature = Math.floor(parsedData.current.temp_c);
-      const description = parsedData.current.condition.text;
+      // Extract weather details
+      const { temp_c, condition } = parsedData.current;
+      const temperature = Math.floor(temp_c);
+      const description = condition.text;
+
       const weatherIcon = Object.keys(weatherCodes).find((icon) =>
-        weatherCodes[icon].includes(parsedData.current.condition.code)
-      );
+        weatherCodes[icon].includes(condition.code)
+      ) || "default"; // Use "default" if no match
 
       setCurrentWeather({ temperature, description, weatherIcon });
 
+      // Extract hourly forecast
       const combinedHourlyData = [
         ...(parsedData.forecast.forecastday?.[0]?.hour || []),
         ...(parsedData.forecast.forecastday?.[1]?.hour || []),
@@ -62,7 +71,7 @@ const App = () => {
   };
 
   useEffect(() => {
-    getWeatherDetails("London"); // Default city
+    getWeatherDetails("London");
   }, []);
 
   return (
@@ -89,5 +98,6 @@ const App = () => {
 };
 
 export default App;
+
 
 
