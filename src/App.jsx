@@ -6,52 +6,54 @@ import { weatherCodes } from "./constants";
 import NoResultsDiv from "./components/NoResultsDiv";
 
 const App = () => {
-  const API_KEY = import.meta.env.VITE_API_KEY; // ✅ Don't log API Key
+  const API_KEY = import.meta.env.VITE_API_KEY;
 
   const [currentWeather, setCurrentWeather] = useState({});
   const [hourlyForecasts, setHourlyForecasts] = useState([]);
   const [hasNoResults, setHasNoResults] = useState(false);
   const searchInputRef = useRef(null);
 
-  const getWeatherDetails = async (city) => {
+  const getWeatherDetails = async (location) => {
     setHasNoResults(false);
     if (window.innerWidth >= 768 && searchInputRef.current) {
       searchInputRef.current.focus();
     }
 
     try {
-      const encodedCity = encodeURIComponent(city);
-      const API_URL = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodedCity}&days=2`;
+      let query = location;
+      if (typeof location === "object" && location.lat && location.lon) {
+        query = `${location.lat},${location.lon}`;
+      }
 
-      console.log("🌍 Fetching from:", API_URL); // ✅ Debugging API URL
+      const API_URL = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${query}&days=2`;
+
+      console.log("🌍 Fetching from:", API_URL);
 
       const response = await fetch(API_URL);
       if (!response.ok) {
         console.error("❌ API Error:", response.status, response.statusText);
-        throw new Error("❌ Failed to fetch weather data");
+        throw new Error("Failed to fetch weather data");
       }
 
       const parsedData = await response.json();
-      console.log("✅ Parsed API Data:", parsedData); // ✅ Debugging parsed data
+      console.log("✅ Parsed API Data:", parsedData);
 
       if (!parsedData.location || !parsedData.current || !parsedData.forecast) {
-        throw new Error("❌ Invalid API response structure");
+        throw new Error("Invalid API response structure");
       }
 
-      // Extract weather details
       const { temp_c, condition } = parsedData.current;
       const temperature = Math.floor(temp_c);
       const description = condition.text;
 
       const weatherIcon = Object.keys(weatherCodes).find((icon) =>
         weatherCodes[icon].includes(condition.code)
-      ) || "default"; // Use "default" if no match
+      ) || "default";
 
       console.log("🌦 Weather Icon:", weatherIcon);
 
       setCurrentWeather({ temperature, description, weatherIcon });
 
-      // Extract hourly forecast
       const combinedHourlyData = [
         ...(parsedData.forecast.forecastday?.[0]?.hour || []),
         ...(parsedData.forecast.forecastday?.[1]?.hour || []),
@@ -68,6 +70,24 @@ const App = () => {
     }
   };
 
+  const getLiveLocationWeather = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log("📍 Live Location:", latitude, longitude);
+          getWeatherDetails({ lat: latitude, lon: longitude });
+        },
+        (error) => {
+          console.error("❌ Error getting location:", error);
+          alert("Unable to access location. Please allow location access.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
+
   useEffect(() => {
     getWeatherDetails("London");
   }, []);
@@ -75,6 +95,10 @@ const App = () => {
   return (
     <div className="container">
       <SearchSection getWeatherDetails={getWeatherDetails} searchInputRef={searchInputRef} />
+
+      <button onClick={getLiveLocationWeather} className="location-btn">
+        Use Live Location
+      </button>
 
       {hasNoResults ? (
         <NoResultsDiv />
@@ -96,6 +120,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
