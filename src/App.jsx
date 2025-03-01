@@ -8,29 +8,18 @@ import NoResultsDiv from "./components/NoResultsDiv";
 const App = () => {
   const API_KEY = import.meta.env.VITE_API_KEY;
 
-  if (!API_KEY) {
-    console.error("❌ API Key is missing! Check your .env file.");
-  }
-
   const [currentWeather, setCurrentWeather] = useState({});
   const [hourlyForecasts, setHourlyForecasts] = useState([]);
   const [hasNoResults, setHasNoResults] = useState(false);
   const searchInputRef = useRef(null);
 
-  const getWeatherDetails = async (city) => {
-    if (!API_KEY) {
-      console.error("❌ API Key is undefined!");
-      return;
-    }
-
+  // ✅ Function to fetch weather data for city or coordinates
+  const getWeatherDetails = async (cityOrCoords) => {
     setHasNoResults(false);
-    if (window.innerWidth >= 768 && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-
+    
     try {
-      const encodedCity = encodeURIComponent(city);
-      const API_URL = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodedCity}&days=2`;
+      const encodedQuery = encodeURIComponent(cityOrCoords);
+      const API_URL = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodedQuery}&days=2`;
 
       console.log("🌍 Fetching from:", API_URL);
 
@@ -52,12 +41,13 @@ const App = () => {
 
       const weatherIcon = Object.keys(weatherCodes).find((icon) =>
         weatherCodes[icon].includes(condition.code)
-      ) || "default";
+      ) || "default"; 
 
       console.log("🌦 Weather Icon:", weatherIcon);
 
       setCurrentWeather({ temperature, description, weatherIcon });
 
+      // Extract hourly forecast
       const combinedHourlyData = [
         ...(parsedData.forecast.forecastday?.[0]?.hour || []),
         ...(parsedData.forecast.forecastday?.[1]?.hour || []),
@@ -74,6 +64,7 @@ const App = () => {
     }
   };
 
+  // ✅ Function to get live location and fetch weather data
   const getLiveLocationWeather = () => {
     if (!navigator.geolocation) {
       console.error("❌ Geolocation is not supported by this browser.");
@@ -84,6 +75,8 @@ const App = () => {
       (position) => {
         const { latitude, longitude } = position.coords;
         console.log("📍 Live Location:", latitude, longitude);
+
+        // Fetch weather using coordinates
         getWeatherDetails(`${latitude},${longitude}`);
       },
       (error) => {
@@ -99,15 +92,18 @@ const App = () => {
 
   return (
     <div className="container">
-      <SearchSection getWeatherDetails={getWeatherDetails} searchInputRef={searchInputRef} />
-      <button onClick={getLiveLocationWeather} className="location-button">📍 Use Live Location</button>
+      {/* ✅ Pass the live location function to SearchSection */}
+      <SearchSection
+        getWeatherDetails={getWeatherDetails}
+        getLiveLocationWeather={getLiveLocationWeather}
+        searchInputRef={searchInputRef}
+      />
 
       {hasNoResults ? (
         <NoResultsDiv />
       ) : (
         <div className="weather-section">
           <CurrentWeather currentWeather={currentWeather} />
-
           <div className="hourly-forecast">
             <ul className="weather-list">
               {hourlyForecasts.map((hourlyWeather) => (
@@ -122,6 +118,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
