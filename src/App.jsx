@@ -56,7 +56,80 @@ const App = () => {
         weatherCodes[icon].includes(condition.code)
       ) || "default"; 
 
-      console
+      console.log("🌦 Weather Icon:", weatherIcon);
+
+      setCurrentWeather({ temperature, description, weatherIcon });
+
+      // ✅ Extract hourly forecast
+      const combinedHourlyData = [
+        ...(parsedData.forecast.forecastday?.[0]?.hour || []),
+        ...(parsedData.forecast.forecastday?.[1]?.hour || []),
+      ];
+
+      if (searchInputRef.current) {
+        searchInputRef.current.value = parsedData.location.name;
+      }
+
+      setHourlyForecasts(combinedHourlyData);
+    } catch (error) {
+      console.error("❌ Error fetching weather:", error.message);
+      setHasNoResults(true);
+    }
+  };
+
+  // 📍 Function to fetch live location weather
+  const getLiveLocationWeather = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log("📍 Live Location:", latitude, longitude);
+          getWeatherDetails(`${latitude},${longitude}`); // ✅ Correct format
+        },
+        (error) => {
+          console.error("❌ Error getting location:", error);
+          alert("Unable to access location. Please allow location access.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
+
+  useEffect(() => {
+    getWeatherDetails("London");
+  }, []);
+
+  return (
+    <div className="container">
+      {/* ✅ Pass live location function to SearchSection */}
+      <SearchSection 
+        getWeatherDetails={getWeatherDetails} 
+        getLiveLocationWeather={getLiveLocationWeather} 
+        searchInputRef={searchInputRef} 
+      />
+
+      {hasNoResults ? (
+        <NoResultsDiv />
+      ) : (
+        <div className="weather-section">
+          <CurrentWeather currentWeather={currentWeather} />
+
+          <div className="hourly-forecast">
+            <ul className="weather-list">
+              {hourlyForecasts.map((hourlyWeather) => (
+                <HourlyWeather key={hourlyWeather.time_epoch} hourlyWeather={hourlyWeather} />
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
+
 
 
 
