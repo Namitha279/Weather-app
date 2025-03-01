@@ -6,25 +6,22 @@ import { weatherCodes } from "./constants";
 import NoResultsDiv from "./components/NoResultsDiv";
 
 const App = () => {
-  const API_KEY = import.meta.env.VITE_API_KEY;
+  const API_KEY = import.meta.env.VITE_API_KEY; // ✅ Don't log API Key
 
   const [currentWeather, setCurrentWeather] = useState({});
   const [hourlyForecasts, setHourlyForecasts] = useState([]);
   const [hasNoResults, setHasNoResults] = useState(false);
   const searchInputRef = useRef(null);
 
-  const getWeatherDetails = async (location) => {
+  // 🌍 Function to fetch weather details (City or Coordinates)
+  const getWeatherDetails = async (query) => {
     setHasNoResults(false);
+    
     if (window.innerWidth >= 768 && searchInputRef.current) {
       searchInputRef.current.focus();
     }
 
     try {
-      let query = location;
-      if (typeof location === "object" && location.lat && location.lon) {
-        query = `${location.lat},${location.lon}`;
-      }
-
       const API_URL = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${query}&days=2`;
 
       console.log("🌍 Fetching from:", API_URL);
@@ -42,18 +39,22 @@ const App = () => {
         throw new Error("Invalid API response structure");
       }
 
+      // Extract weather details
       const { temp_c, condition } = parsedData.current;
       const temperature = Math.floor(temp_c);
       const description = condition.text;
 
-      const weatherIcon = Object.keys(weatherCodes).find((icon) =>
-        weatherCodes[icon].includes(condition.code)
-      ) || "default";
+      // Match weather icon
+      const weatherIcon =
+        Object.keys(weatherCodes).find((icon) =>
+          weatherCodes[icon].includes(condition.code)
+        ) || "default";
 
       console.log("🌦 Weather Icon:", weatherIcon);
 
       setCurrentWeather({ temperature, description, weatherIcon });
 
+      // Extract hourly forecast
       const combinedHourlyData = [
         ...(parsedData.forecast.forecastday?.[0]?.hour || []),
         ...(parsedData.forecast.forecastday?.[1]?.hour || []),
@@ -70,13 +71,14 @@ const App = () => {
     }
   };
 
+  // 📍 Function to fetch live location
   const getLiveLocationWeather = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           console.log("📍 Live Location:", latitude, longitude);
-          getWeatherDetails({ lat: latitude, lon: longitude });
+          getWeatherDetails(`${latitude},${longitude}`); // ✅ Pass as "lat,lon"
         },
         (error) => {
           console.error("❌ Error getting location:", error);
@@ -88,24 +90,28 @@ const App = () => {
     }
   };
 
+  // 🌎 Fetch weather for default city on load
   useEffect(() => {
     getWeatherDetails("London");
   }, []);
 
   return (
     <div className="container">
-      <SearchSection getWeatherDetails={getWeatherDetails} searchInputRef={searchInputRef} />
-
-      <button onClick={getLiveLocationWeather} className="location-btn">
-        Use Live Location
-      </button>
+      {/* Search Bar & Live Location Button */}
+      <SearchSection 
+        getWeatherDetails={getWeatherDetails} 
+        getLiveLocationWeather={getLiveLocationWeather} 
+        searchInputRef={searchInputRef} 
+      />
 
       {hasNoResults ? (
         <NoResultsDiv />
       ) : (
         <div className="weather-section">
+          {/* Display Current Weather */}
           <CurrentWeather currentWeather={currentWeather} />
 
+          {/* Display Hourly Forecast */}
           <div className="hourly-forecast">
             <ul className="weather-list">
               {hourlyForecasts.map((hourlyWeather) => (
@@ -120,6 +126,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
