@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import CurrentWeather from "./components/CurrentWeather";
 import HourlyWeather from "./components/HourlyWeather";
 import SearchSection from "./components/SearchSection";
-import { weatherCodes } from "./constants"; // Correct import path
+import { weatherCodes } from "./constants"; 
 import NoResultsDiv from "./components/NoResultsDiv";
 
 const App = () => {
   const API_KEY = import.meta.env.VITE_API_KEY;
+  console.log("API Key:", API_KEY); // Debugging to check if the API key is loaded
 
   const [currentWeather, setCurrentWeather] = useState({});
   const [hourlyForecasts, setHourlyForecasts] = useState([]);
@@ -15,19 +16,27 @@ const App = () => {
 
   const getWeatherDetails = async (city) => {
     setHasNoResults(false);
-    if (window.innerWidth >= 768) searchInputRef.current.focus();
+    if (window.innerWidth >= 768 && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
 
     try {
-      // Use a CORS proxy to bypass the CORS restriction
-      const API_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${city}&days=2`)}`;
+      const API_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(
+        `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${city}&days=2`
+      )}`;
+
+      console.log("Fetching data from:", API_URL); // Debugging API URL
 
       const response = await fetch(API_URL);
-      if (!response.ok) throw new Error("Failed to fetch");
+      if (!response.ok) throw new Error("Failed to fetch weather data");
 
       const data = await response.json();
       const parsedData = JSON.parse(data.contents); // Extract actual JSON data
 
-      // Extract current weather data
+      if (!parsedData || !parsedData.current || !parsedData.forecast) {
+        throw new Error("Invalid API response");
+      }
+
       const temperature = Math.floor(parsedData.current.temp_c);
       const description = parsedData.current.condition.text;
       const weatherIcon = Object.keys(weatherCodes).find((icon) =>
@@ -36,12 +45,14 @@ const App = () => {
 
       setCurrentWeather({ temperature, description, weatherIcon });
 
-      // Combine hourly data for two days
       const combinedHourlyData = [
-        ...(parsedData.forecast?.forecastday?.[0]?.hour || []),
-        ...(parsedData.forecast?.forecastday?.[1]?.hour || []),
+        ...(parsedData.forecast.forecastday?.[0]?.hour || []),
+        ...(parsedData.forecast.forecastday?.[1]?.hour || []),
       ];
-      searchInputRef.current.value = parsedData.location.name;
+
+      if (searchInputRef.current) {
+        searchInputRef.current.value = parsedData.location.name;
+      }
 
       setHourlyForecasts(combinedHourlyData);
     } catch (error) {
@@ -50,32 +61,24 @@ const App = () => {
     }
   };
 
-  // Fetch default city weather data on initial render
   useEffect(() => {
-    const defaultCity = "London";
-    getWeatherDetails(defaultCity);
+    getWeatherDetails("London"); // Default city
   }, []);
 
   return (
     <div className="container">
-      {/* Search section */}
       <SearchSection getWeatherDetails={getWeatherDetails} searchInputRef={searchInputRef} />
 
-      {/* Conditionally render based on hasNoResults state */}
       {hasNoResults ? (
         <NoResultsDiv />
       ) : (
         <div className="weather-section">
           <CurrentWeather currentWeather={currentWeather} />
 
-          {/* Hourly-weather forecast list */}
           <div className="hourly-forecast">
             <ul className="weather-list">
               {hourlyForecasts.map((hourlyWeather) => (
-                <HourlyWeather
-                  key={hourlyWeather.time_epoch}
-                  hourlyWeather={hourlyWeather}
-                />
+                <HourlyWeather key={hourlyWeather.time_epoch} hourlyWeather={hourlyWeather} />
               ))}
             </ul>
           </div>
@@ -86,4 +89,5 @@ const App = () => {
 };
 
 export default App;
+
 
